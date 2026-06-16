@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function EmergencyFab() {
   const pathname = usePathname();
-  if (pathname === "/emergency") return null;
+  if (pathname === "/emergency" || pathname === "/dashboard") return null;
 
   return (
     <Link

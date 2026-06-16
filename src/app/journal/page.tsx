@@ -6,7 +6,7 @@ export default function JournalPage() {
     <div>
       <PageHeader
         title="Journal"
-        description="Daily postmortem. Focus on system failures, not shame."
+        description="One entry per day. Reflect, then submit."
       />
       <JournalForm />
     </div>

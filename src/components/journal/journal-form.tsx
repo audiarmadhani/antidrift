@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format, parseISO } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { AutosaveIndicator } from "@/components/shared/autosave-indicator";
-import { useJournal, useUpsertJournal } from "@/lib/hooks";
+import { Separator } from "@/components/ui/separator";
+import { useJournal, useJournals, useUpsertJournal } from "@/lib/hooks";
+import { JournalHistory } from "./journal-history";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const prompts = [
   { key: "wins" as const, label: "Wins", helper: "What did I build today?" },
@@ -19,12 +22,24 @@ const prompts = [
   { key: "future_self_note" as const, label: "Future Self Note", helper: "What would my 35-year-old self tell me today?" },
 ];
 
+const emptyForm = {
+  wins: "",
+  errors: "",
+  trigger: "",
+  root_cause: "",
+  system_fix: "",
+  gratitude: "",
+  future_self_note: "",
+};
+
 export function JournalForm() {
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const { data } = useJournal(date);
+  const today = format(new Date(), "yyyy-MM-dd");
+  const [date, setDate] = useState(today);
+  const { data, isLoading } = useJournal(date);
+  const { data: journals = [] } = useJournals();
   const upsert = useUpsertJournal(date);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [form, setForm] = useState<Record<string, string>>({});
+  const [form, setForm] = useState(emptyForm);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (data) {
@@ -37,64 +52,138 @@ export function JournalForm() {
         gratitude: data.gratitude ?? "",
         future_self_note: data.future_self_note ?? "",
       });
+      setDirty(false);
     }
-  }, [data]);
+  }, [data, date]);
 
-  const save = debounce(async (payload: Record<string, string>) => {
-    setStatus("saving");
+  const updateField = (key: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      await upsert.mutateAsync(payload);
-      setStatus("saved");
-      setTimeout(() => setStatus("idle"), 2000);
+      await upsert.mutateAsync(form);
+      setDirty(false);
+      toast.success("Journal entry saved");
     } catch {
-      setStatus("error");
+      toast.error("Failed to save entry");
     }
-  }, 500);
+  };
+
+  const handleNewEntry = () => {
+    setDate(today);
+    setForm(emptyForm);
+    setDirty(false);
+  };
+
+  const formattedDate = date
+    ? format(parseISO(date), "EEEE, MMMM d, yyyy")
+    : "";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Label htmlFor="date">Date</Label>
-          <Input
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-auto rounded-xl"
-          />
-        </div>
-        <AutosaveIndicator status={status} />
-      </div>
+    <div className="space-y-0">
+      <form onSubmit={handleSubmit}>
+        <article
+          className={cn(
+            "rounded-2xl border border-border bg-surface",
+            "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+          )}
+        >
+          {/* Journal header */}
+          <header className="border-b border-border px-6 py-5 md:px-8">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Daily Postmortem
+            </p>
+            <h2 className="mt-2 font-[family-name:var(--font-inter)] text-xl font-medium tracking-tight md:text-2xl">
+              {formattedDate}
+            </h2>
+            <div className="mt-4 flex flex-wrap items-end gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="journal-date" className="text-xs text-muted-foreground">
+                  Entry date
+                </Label>
+                <Input
+                  id="journal-date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-auto rounded-lg border-border bg-background"
+                />
+              </div>
+              {date !== today && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewEntry}
+                  className="text-muted-foreground"
+                >
+                  New entry for today
+                </Button>
+              )}
+            </div>
+          </header>
 
-      {prompts.map((p) => (
-        <Card key={p.key} className="rounded-2xl border-border bg-surface">
-          <CardHeader>
-            <CardTitle className="text-base font-medium">{p.label}</CardTitle>
-            <p className="text-sm text-muted-foreground">{p.helper}</p>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={form[p.key] ?? ""}
-              onChange={(e) => {
-                const next = { ...form, [p.key]: e.target.value };
-                setForm(next);
-                save(next);
-              }}
-              rows={3}
-              className="rounded-xl"
-            />
-          </CardContent>
-        </Card>
-      ))}
+          {/* Journal body */}
+          <div className="px-6 py-6 md:px-8 md:py-8">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading entry…</p>
+            ) : (
+              <div className="space-y-8">
+                {prompts.map((p, i) => (
+                  <div key={p.key}>
+                    {i > 0 && <Separator className="mb-8 bg-border/60" />}
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={p.key}
+                        className="text-sm font-medium text-foreground"
+                      >
+                        {p.label}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">{p.helper}</p>
+                      <Textarea
+                        id={p.key}
+                        value={form[p.key]}
+                        onChange={(e) => updateField(p.key, e.target.value)}
+                        rows={3}
+                        placeholder="Write here…"
+                        className={cn(
+                          "mt-2 min-h-[4.5rem] resize-y rounded-lg border-0 border-b border-border",
+                          "bg-transparent px-0 shadow-none",
+                          "focus-visible:border-primary focus-visible:ring-0",
+                          "placeholder:text-muted-foreground/40"
+                        )}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Submit footer */}
+          <footer className="flex items-center justify-between gap-4 border-t border-border px-6 py-4 md:px-8">
+            <p className="text-xs text-muted-foreground">
+              {dirty ? "Unsaved changes" : "Ready to submit"}
+            </p>
+            <Button
+              type="submit"
+              disabled={upsert.isPending || isLoading}
+              className="min-w-[120px] rounded-xl"
+            >
+              {upsert.isPending ? "Saving…" : "Submit entry"}
+            </Button>
+          </footer>
+        </article>
+      </form>
+
+      <JournalHistory
+        entries={journals}
+        selectedDate={date}
+        onSelect={setDate}
+      />
     </div>
   );
-}
-
-function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
-  let t: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
 }

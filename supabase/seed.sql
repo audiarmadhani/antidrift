@@ -23,6 +23,10 @@ Small actions compound.'
 ) on conflict (id) do nothing;
 
 insert into goals (category, title, target_value, current_value, unit, description) values
-  ('wealth', 'Monthly Income', 300000000, 0, 'IDR/month', 'Rp300,000,000/month target'),
-  ('golf', 'Handicap Goal', 0, 18, 'handicap', 'Scratch handicap target')
+  ('wealth', 'Monthly Income', 25000000, 0, 'IDR/month', 'Rp25M/month target'),
+  ('business', 'Ship MVP', 1, 0, 'projects', 'Launch first product version'),
+  ('marriage', 'Weekly Date Night', 4, 0, 'dates/month', 'Four intentional dates per month'),
+  ('health', 'Train Consistently', 4, 0, 'sessions/week', 'Four workouts per week'),
+  ('golf', 'Scratch Handicap', 0, 18, 'handicap', 'Work from 18 to scratch'),
+  ('character', '30-Day Honesty Streak', 30, 0, 'days', 'No secret behavior for 30 days')
 on conflict do nothing;

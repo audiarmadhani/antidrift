@@ -297,7 +297,7 @@ export async function exportAllData(): Promise<ExportSnapshot> {
   };
 }
 
-async function listJournalEntries(): Promise<JournalEntry[]> {
+export async function listJournalEntries(): Promise<JournalEntry[]> {
   const { data, error } = await getSupabase()
     .from("journal_entries")
     .select("*")

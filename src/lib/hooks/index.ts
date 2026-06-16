@@ -117,6 +117,14 @@ export function useJournal(date: string) {
   return useQuery({
     queryKey: ["journal", date],
     queryFn: () => apiFetch<JournalEntry>(`/api/journal/${date}`),
+    enabled: Boolean(date),
+  });
+}
+
+export function useJournals() {
+  return useQuery({
+    queryKey: ["journals"],
+    queryFn: () => apiFetch<JournalEntry[]>("/api/journal"),
   });
 }
 
@@ -125,7 +133,10 @@ export function useUpsertJournal(date: string) {
   return useMutation({
     mutationFn: (data: Partial<JournalEntry>) =>
       mutatingFetch<JournalEntry>(`/api/journal/${date}`, "PUT", data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["journal", date] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["journal", date] });
+      qc.invalidateQueries({ queryKey: ["journals"] });
+    },
   });
 }
 

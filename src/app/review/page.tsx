@@ -1,21 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { CeoScoreboard } from "@/components/review/ceo-scoreboard";
-import { CeoReviewForm } from "@/components/review/ceo-review-form";
+import {
+  CeoReviewForm,
+  hasReviewContent,
+} from "@/components/review/ceo-review-form";
 import { CeoLetter } from "@/components/review/ceo-letter";
-import { ReviewArchive } from "@/components/review/review-archive";
+import { ReviewHistory } from "@/components/review/review-history";
 import { SkeletonPage } from "@/components/shared/skeleton-page";
 import { getWeekStart, formatWeekLabel } from "@/lib/export/markdown";
-import { useEnsureReview, useReview } from "@/lib/hooks";
+import { useEnsureReview, useReview, useReviews } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import type { CeoScores } from "@/lib/db/types";
 
 export default function ReviewPage() {
-  const weekStart = getWeekStart();
+  const currentWeekStart = getWeekStart();
+  const [selectedWeekStart, setSelectedWeekStart] = useState(currentWeekStart);
+
   const ensure = useEnsureReview();
-  const { data: review, isLoading } = useReview(weekStart);
+  const { data: reviews = [] } = useReviews();
+  const { data: review, isLoading, refetch } = useReview(selectedWeekStart);
 
   useEffect(() => {
     ensure.mutate();
@@ -30,6 +36,8 @@ export default function ReviewPage() {
     overall: review?.overall_drift_score ?? 0,
   };
 
+  const showLetter = review && hasReviewContent(review);
+
   if (isLoading && !review) return <SkeletonPage />;
 
   return (
@@ -37,26 +45,18 @@ export default function ReviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
           title="Weekly CEO Review"
-          description={`Week of ${formatWeekLabel(weekStart)}`}
+          description={`Week of ${formatWeekLabel(selectedWeekStart)}`}
         />
-        <div className="flex gap-2">
+        {selectedWeekStart !== currentWeekStart && (
           <Button
             variant="outline"
             size="sm"
-            className="rounded-xl"
-            onClick={() => window.open(`/api/reviews/${weekStart}/export?format=markdown`, "_blank")}
+            className="rounded-xl shrink-0"
+            onClick={() => setSelectedWeekStart(currentWeekStart)}
           >
-            Export MD
+            Back to this week
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl"
-            onClick={() => window.open(`/api/reviews/${weekStart}/export?format=pdf`, "_blank")}
-          >
-            Export PDF
-          </Button>
-        </div>
+        )}
       </div>
 
       <section className="space-y-4">
@@ -64,9 +64,21 @@ export default function ReviewPage() {
         <CeoScoreboard scores={scores} />
       </section>
 
-      <CeoReviewForm weekStart={weekStart} review={review ?? null} />
-      <CeoLetter review={review ?? null} />
-      <ReviewArchive />
+      <CeoReviewForm
+        weekStart={selectedWeekStart}
+        review={review ?? null}
+        isLoading={isLoading}
+        onSubmitted={() => refetch()}
+      />
+
+      {showLetter && <CeoLetter review={review} />}
+
+      <ReviewHistory
+        reviews={reviews}
+        selectedWeekStart={selectedWeekStart}
+        currentWeekStart={currentWeekStart}
+        onSelect={setSelectedWeekStart}
+      />
     </div>
   );
 }

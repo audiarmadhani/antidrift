@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { AutosaveIndicator } from "@/components/shared/autosave-indicator";
+import { Separator } from "@/components/ui/separator";
 import { useUpsertReview } from "@/lib/hooks";
 import type { WeeklyReview } from "@/lib/db/types";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const sections = [
   {
@@ -39,73 +41,137 @@ const sections = [
     prompt: "What system will I build next week?",
     examples: "delete accounts, schedule golf, apply to jobs, block apps, weekly date night",
   },
-];
+] as const;
+
+const emptyForm = {
+  wins: "",
+  leaks: "",
+  risks: "",
+  root_cause: "",
+  next_system: "",
+};
 
 interface Props {
   weekStart: string;
   review: WeeklyReview | null;
+  isLoading?: boolean;
+  onSubmitted?: () => void;
 }
 
-export function CeoReviewForm({ weekStart, review }: Props) {
+export function CeoReviewForm({
+  weekStart,
+  review,
+  isLoading,
+  onSubmitted,
+}: Props) {
   const upsert = useUpsertReview(weekStart);
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [form, setForm] = useState<Partial<WeeklyReview>>({});
+  const [form, setForm] = useState(emptyForm);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    if (review) setForm(review);
-  }, [review]);
-
-  const save = debounce(async (data: Partial<WeeklyReview>) => {
-    setStatus("saving");
-    try {
-      await upsert.mutateAsync(data);
-      setStatus("saved");
-      setTimeout(() => setStatus("idle"), 2000);
-    } catch {
-      setStatus("error");
+    if (review) {
+      setForm({
+        wins: review.wins ?? "",
+        leaks: review.leaks ?? "",
+        risks: review.risks ?? "",
+        root_cause: review.root_cause ?? "",
+        next_system: review.next_system ?? "",
+      });
+      setDirty(false);
     }
-  }, 500);
+  }, [review, weekStart]);
 
-  const update = (key: keyof WeeklyReview, value: string) => {
-    const next = { ...form, [key]: value };
-    setForm(next);
-    save(next);
+  const update = (key: keyof typeof emptyForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setDirty(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await upsert.mutateAsync(form);
+      setDirty(false);
+      toast.success("CEO review submitted");
+      onSubmitted?.();
+    } catch {
+      toast.error("Failed to submit review");
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-end">
-        <AutosaveIndicator status={status} />
-      </div>
-      {sections.map((s) => (
-        <Card key={s.key} className="rounded-2xl border-border bg-surface">
-          <CardHeader>
-            <CardTitle className="text-base font-medium">{s.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">{s.prompt}</p>
-            <p className="text-xs text-muted-foreground/70">e.g. {s.examples}</p>
-          </CardHeader>
-          <CardContent>
-            <Label htmlFor={s.key} className="sr-only">
-              {s.prompt}
-            </Label>
-            <Textarea
-              id={s.key}
-              value={(form[s.key] as string) ?? ""}
-              onChange={(e) => update(s.key, e.target.value)}
-              rows={4}
-              className="rounded-xl"
-            />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    <form onSubmit={handleSubmit} className="space-y-0">
+      <article className="rounded-2xl border border-border bg-surface">
+        <header className="border-b border-border px-6 py-5 md:px-8">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            CEO Review
+          </p>
+          <h2 className="mt-2 text-xl font-medium tracking-tight">
+            Weekly reflection
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Answer honestly. Submit when complete.
+          </p>
+        </header>
+
+        <div className="px-6 py-6 md:px-8 md:py-8">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading review…</p>
+          ) : (
+            <div className="space-y-8">
+              {sections.map((s, i) => (
+                <div key={s.key}>
+                  {i > 0 && <Separator className="mb-8 bg-border/60" />}
+                  <div className="space-y-2">
+                    <Label htmlFor={s.key} className="text-sm font-medium">
+                      {s.title}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">{s.prompt}</p>
+                    <p className="text-xs text-muted-foreground/70">
+                      e.g. {s.examples}
+                    </p>
+                    <Textarea
+                      id={s.key}
+                      value={form[s.key]}
+                      onChange={(e) => update(s.key, e.target.value)}
+                      rows={4}
+                      placeholder="Write here…"
+                      className={cn(
+                        "mt-2 rounded-lg border-0 border-b border-border bg-transparent px-0 shadow-none",
+                        "focus-visible:border-primary focus-visible:ring-0",
+                        "placeholder:text-muted-foreground/40"
+                      )}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <footer className="flex items-center justify-between gap-4 border-t border-border px-6 py-4 md:px-8">
+          <p className="text-xs text-muted-foreground">
+            {dirty ? "Unsaved changes" : "Ready to submit"}
+          </p>
+          <Button
+            type="submit"
+            disabled={upsert.isPending || isLoading}
+            className="min-w-[140px] rounded-xl"
+          >
+            {upsert.isPending ? "Submitting…" : "Submit review"}
+          </Button>
+        </footer>
+      </article>
+    </form>
   );
 }
 
-function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
-  let t: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
+export function hasReviewContent(review: WeeklyReview): boolean {
+  return Boolean(
+    review.wins?.trim() ||
+      review.leaks?.trim() ||
+      review.risks?.trim() ||
+      review.root_cause?.trim() ||
+      review.next_system?.trim() ||
+      review.ceo_summary?.trim()
+  );
 }
