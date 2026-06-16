@@ -147,10 +147,10 @@ export function JournalForm() {
                         id={p.key}
                         value={form[p.key]}
                         onChange={(e) => updateField(p.key, e.target.value)}
-                        rows={3}
+                        rows={5}
                         placeholder="Write here…"
                         className={cn(
-                          "mt-2 min-h-[4.5rem] resize-y rounded-lg border-0 border-b border-border",
+                          "mt-2 min-h-[8.5rem] resize-y rounded-lg border-0 border-b border-border md:min-h-[10rem]",
                           "bg-transparent px-0 shadow-none",
                           "focus-visible:border-primary focus-visible:ring-0",
                           "placeholder:text-muted-foreground/40"

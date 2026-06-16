@@ -47,7 +47,11 @@ function AlertDialogContent({
 }) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      <AlertDialogPrimitive.Close
+        data-slot="alert-dialog-overlay-close"
+        aria-label="Dismiss dialog"
+        render={<AlertDialogOverlay />}
+      />
       <AlertDialogPrimitive.Popup
         data-slot="alert-dialog-content"
         data-size={size}

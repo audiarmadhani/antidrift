@@ -21,7 +21,7 @@ export function StatCards() {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
       {items.map((item) => (
         <Card key={item.label} className="rounded-2xl border-border bg-surface">
           <CardHeader className="pb-2">

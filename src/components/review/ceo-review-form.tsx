@@ -133,10 +133,10 @@ export function CeoReviewForm({
                       id={s.key}
                       value={form[s.key]}
                       onChange={(e) => update(s.key, e.target.value)}
-                      rows={4}
+                      rows={5}
                       placeholder="Write here…"
                       className={cn(
-                        "mt-2 rounded-lg border-0 border-b border-border bg-transparent px-0 shadow-none",
+                        "mt-2 min-h-[8.5rem] rounded-lg border-0 border-b border-border bg-transparent px-0 shadow-none md:min-h-[10rem]",
                         "focus-visible:border-primary focus-visible:ring-0",
                         "placeholder:text-muted-foreground/40"
                       )}

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { format } from "date-fns";
 
 export type EmergencyStep = 1 | 2 | 3 | 4 | 5;
 
@@ -66,3 +67,62 @@ export const useSyncStore = create<SyncState>((set) => ({
   setOnline: (isOnline) => set({ isOnline }),
   setLastSynced: (lastSynced) => set({ lastSynced }),
 }));
+
+type CustomChecklistItem = { id: string; label: string };
+
+interface DailyChecklistState {
+  items: CustomChecklistItem[];
+  checkedByDate: Record<string, Record<string, boolean>>;
+  addItem: (label: string) => void;
+  removeItem: (id: string) => void;
+  toggleItem: (itemId: string, date?: string) => void;
+  isChecked: (itemId: string, date?: string) => boolean;
+}
+
+function todayISO() {
+  return format(new Date(), "yyyy-MM-dd");
+}
+
+export const useDailyChecklistStore = create<DailyChecklistState>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      checkedByDate: {},
+      addItem: (label) =>
+        set((state) => ({
+          items: [
+            ...state.items,
+            { id: crypto.randomUUID(), label: label.trim() },
+          ],
+        })),
+      removeItem: (id) =>
+        set((state) => {
+          const nextCheckedByDate: Record<string, Record<string, boolean>> = {};
+          for (const [date, checks] of Object.entries(state.checkedByDate)) {
+            const { [id]: _removed, ...rest } = checks;
+            nextCheckedByDate[date] = rest;
+          }
+          return {
+            items: state.items.filter((item) => item.id !== id),
+            checkedByDate: nextCheckedByDate,
+          };
+        }),
+      toggleItem: (itemId, date = todayISO()) =>
+        set((state) => {
+          const dateChecks = state.checkedByDate[date] ?? {};
+          return {
+            checkedByDate: {
+              ...state.checkedByDate,
+              [date]: {
+                ...dateChecks,
+                [itemId]: !dateChecks[itemId],
+              },
+            },
+          };
+        }),
+      isChecked: (itemId, date = todayISO()) =>
+        Boolean(get().checkedByDate[date]?.[itemId]),
+    }),
+    { name: "antidrift-daily-checklist" }
+  )
+);
