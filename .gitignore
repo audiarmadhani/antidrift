@@ -35,7 +35,8 @@ public/sw.js
 public/workbox-*.js
 public/fallback-*.js
 
-# env example is committed
+# env files (never commit secrets)
+.env*
 !.env.example
 
 # vercel

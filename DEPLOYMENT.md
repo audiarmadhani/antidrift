@@ -60,7 +60,30 @@ Vercel auto-deploys on push. Build command: `next build --webpack` (configured i
 
 ## Troubleshooting
 
-**503 Database not configured**
+### 404 — "The page could not be found" (Vercel NOT_FOUND)
+
+This is a **Vercel platform** error, not your Next.js app. The build succeeded but the domain is not linked to a deployment.
+
+1. Open [Vercel Dashboard](https://vercel.com/dashboard) → your **antidrift** project
+2. Go to **Settings → Domains**
+3. Add `antidrift.vercel.app` (or your custom domain) and assign it to **Production**
+4. Go to **Deployments** → find the latest successful deployment → **⋯** → **Promote to Production**
+5. Redeploy if needed: **Deployments** → **Redeploy**
+
+Your live deployment URL (before domain setup) looks like:
+`https://antidrift-<hash>-audi-armadhanis-projects.vercel.app`
+
+### 401 — Deployment Protection / SSO
+
+If deployment URLs return **401 Authentication Required**:
+
+1. **Settings → Deployment Protection**
+2. Set **Production** to **None** (or "Only Preview Deployments" protected)
+3. Save and revisit the URL
+
+Single-user apps should not use Vercel Authentication on production.
+
+### 503 Database not configured
 → Verify env vars are set in Vercel and redeploy.
 
 **PWA not installing**
