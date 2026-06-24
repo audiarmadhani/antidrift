@@ -23,7 +23,7 @@ export function SyncStatus() {
 
   return (
     <span className="text-xs text-muted-foreground">
-      {isOnline ? "Synced" : "Offline — changes saved locally"}
+      {isOnline ? "Local storage" : "Offline — saved on device"}
       {lastSynced && isOnline && (
         <span className="hidden sm:inline"> · {new Date(lastSynced).toLocaleTimeString()}</span>
       )}

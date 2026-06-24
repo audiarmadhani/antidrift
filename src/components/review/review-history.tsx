@@ -1,7 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { formatWeekLabel } from "@/lib/export/markdown";
+import {
+  ceoReviewFilename,
+  formatWeekLabel,
+  reviewToMarkdown,
+  reviewToPrintHtml,
+} from "@/lib/export/markdown";
+import { downloadTextFile, openPrintWindow } from "@/lib/export/download";
+import { getReview } from "@/lib/db/local-store";
 import { hasReviewContent } from "@/components/review/ceo-review-form";
 import type { WeeklyReview } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
@@ -33,8 +40,18 @@ export function ReviewHistory({
     .filter(hasReviewContent)
     .sort((a, b) => b.week_start.localeCompare(a.week_start));
 
-  const exportReview = (weekStart: string, format: "markdown" | "pdf") => {
-    window.open(`/api/reviews/${weekStart}/export?format=${format}`, "_blank");
+  const exportReview = async (weekStart: string, format: "markdown" | "pdf") => {
+    const review = await getReview(weekStart);
+    if (!review) return;
+    if (format === "markdown") {
+      downloadTextFile(
+        reviewToMarkdown(review),
+        ceoReviewFilename(weekStart, "md"),
+        "text/markdown"
+      );
+    } else {
+      openPrintWindow(reviewToPrintHtml(review));
+    }
   };
 
   return (

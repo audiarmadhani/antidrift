@@ -2,33 +2,20 @@
 
 ## Prerequisites
 
-- [Supabase](https://supabase.com) project
 - [Vercel](https://vercel.com) account
 - Git repository connected to Vercel
 
-## 1. Supabase Setup
+No database or backend env vars are required. All user data is stored in the browser (IndexedDB).
 
-1. Create a new Supabase project.
-2. Open **SQL Editor** and run:
-   - `supabase/migrations/001_initial_schema.sql`
-   - `supabase/seed.sql`
-3. Copy from **Project Settings → API**:
-   - Project URL → `SUPABASE_URL`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
-
-**Important:** Never expose the service role key to the client. It is only used in API routes.
-
-## 2. Vercel Environment Variables
+## 1. Environment Variables (optional)
 
 In Vercel → Project → Settings → Environment Variables:
 
 | Variable | Value |
 |----------|-------|
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role secret |
 | `NEXT_PUBLIC_APP_URL` | Production URL (e.g. `https://antidrift.vercel.app`) |
 
-## 3. Deploy
+## 2. Deploy
 
 ```bash
 git push origin main
@@ -36,19 +23,19 @@ git push origin main
 
 Vercel auto-deploys on push. Build command: `next build --webpack` (configured in `package.json`).
 
-## 4. Verify PWA
+## 3. Verify PWA
 
 1. Open the deployed URL on mobile Chrome or Safari.
 2. **Android:** Menu → "Install app" or "Add to Home screen"
 3. **iOS Safari:** Share → "Add to Home Screen"
 4. Confirm app icon and splash screen appear.
-5. Test offline: open app, toggle airplane mode, complete a check-in, reconnect — data should sync.
+5. Test offline: open app, toggle airplane mode, complete a check-in — data persists locally.
 
-## 5. Weekly CEO Review Cron
+## 4. Weekly CEO Review
 
-`vercel.json` configures a cron job hitting `/api/reviews/ensure` every Sunday at 00:00 UTC. This auto-creates the current week's review.
+The current week's review is auto-created when the app opens (client-side). No server cron is needed.
 
-## 6. Post-Deploy Checklist
+## 5. Post-Deploy Checklist
 
 - [ ] Dashboard loads with identity statement
 - [ ] Daily check-in autosaves
@@ -70,9 +57,6 @@ This is a **Vercel platform** error, not your Next.js app. The build succeeded b
 4. Go to **Deployments** → find the latest successful deployment → **⋯** → **Promote to Production**
 5. Redeploy if needed: **Deployments** → **Redeploy**
 
-Your live deployment URL (before domain setup) looks like:
-`https://antidrift-<hash>-audi-armadhanis-projects.vercel.app`
-
 ### 401 — Deployment Protection / SSO
 
 If deployment URLs return **401 Authentication Required**:
@@ -81,17 +65,14 @@ If deployment URLs return **401 Authentication Required**:
 2. Set **Production** to **None** (or "Only Preview Deployments" protected)
 3. Save and revisit the URL
 
-Single-user apps should not use Vercel Authentication on production.
+### PWA not installing
 
-### 503 Database not configured
-→ Verify env vars are set in Vercel and redeploy.
+Ensure `npm run build` uses `--webpack`. Turbopack builds skip service worker generation.
 
-**PWA not installing**
-→ Ensure `npm run build` uses `--webpack`. Turbopack builds skip service worker generation.
+### Data missing after reinstall
 
-**Offline sync not working**
-→ Check browser DevTools → Application → IndexedDB for `antidrift-query-cache`.
+Data is per-browser/per-device. Export JSON from Settings before clearing site data or reinstalling the PWA.
 
 ## Security Notes
 
-This app has no authentication. Deploy to a private URL or protect with Vercel Password Protection if needed. The service role key bypasses RLS — keep it server-side only.
+This app has no authentication. Deploy to a private URL or protect with Vercel Password Protection if needed. User data never leaves the device unless exported manually.

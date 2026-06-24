@@ -16,8 +16,8 @@ A single-user Progressive Web App — a life operating system to prevent drift a
 
 - Next.js 16 (App Router) + TypeScript
 - Tailwind CSS v4 + shadcn/ui
-- Supabase (Postgres, no auth/RLS)
-- TanStack Query + IndexedDB offline cache
+- IndexedDB (idb-keyval) — all data stored on device
+- TanStack Query + IndexedDB query cache
 - Zustand, React Hook Form, Zod, Framer Motion, Recharts
 - next-pwa
 
@@ -26,23 +26,16 @@ A single-user Progressive Web App — a life operating system to prevent drift a
 ```bash
 npm install
 cp .env.example .env.local
-# Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) — redirects to `/dashboard`.
 
-## Database Setup
+On first launch, default goals and your identity manifesto are seeded locally in the browser.
 
-Run the migration and seed in your Supabase project:
+## Backup & Restore
 
-```bash
-# Using Supabase CLI
-supabase db push
-psql $DATABASE_URL -f supabase/seed.sql
-```
-
-Or apply `supabase/migrations/001_initial_schema.sql` and `supabase/seed.sql` manually in the Supabase SQL editor.
+All data lives in IndexedDB on your device. Use **Settings → Export JSON** regularly to back up. Import restores from a previous export.
 
 ## Scripts
 
@@ -55,12 +48,11 @@ Or apply `supabase/migrations/001_initial_schema.sql` and `supabase/seed.sql` ma
 
 ## Architecture
 
-- Client → Next.js API routes (BFF) → Supabase service role
-- No authentication — designed for single-user local deployment
-- Offline: TanStack Query persist + mutation queue in IndexedDB
-- Auth-ready stub at `src/lib/auth/index.ts`
+- **Local-first** — client reads/writes IndexedDB directly; no server database
+- No authentication — designed for single-user private use
+- TanStack Query caches query results in IndexedDB for fast reloads
+- Weekly CEO review auto-created on app open (client-side)
 
 ## License
 
 Private — single-user application.
-# antidrift

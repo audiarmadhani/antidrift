@@ -14,7 +14,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useEmergencyAnalytics } from "@/lib/hooks";
+import { useEmergencyAnalytics, queryClient } from "@/lib/hooks";
+import { exportAllData, importAllData, resetDatabase } from "@/lib/db/local-store";
+import { parseImportJson, snapshotToJson, snapshotToMarkdown } from "@/lib/export/json";
+import { downloadTextFile } from "@/lib/export/download";
 import { toast } from "sonner";
 
 export function ExportImport() {
@@ -22,35 +25,45 @@ export function ExportImport() {
   const [resetOpen, setResetOpen] = useState(false);
   const { data: emergencyAnalytics } = useEmergencyAnalytics();
 
-  const download = (format: "json" | "markdown") => {
-    window.open(`/api/export?format=${format}`, "_blank");
+  const download = async (format: "json" | "markdown") => {
+    const snapshot = await exportAllData();
+    const date = new Date().toISOString().slice(0, 10);
+    if (format === "json") {
+      downloadTextFile(
+        snapshotToJson(snapshot),
+        `antidrift-export-${date}.json`,
+        "application/json"
+      );
+    } else {
+      downloadTextFile(
+        snapshotToMarkdown(snapshot),
+        `antidrift-export-${date}.md`,
+        "text/markdown"
+      );
+    }
   };
 
   const importFile = async (file: File) => {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    const res = await fetch("/api/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
+    try {
+      const text = await file.text();
+      const data = parseImportJson(text);
+      await importAllData(data);
+      await queryClient.invalidateQueries();
+      toast.success("Import complete");
+    } catch {
       toast.error("Import failed");
-      return;
     }
-    toast.success("Import complete");
-    window.location.reload();
   };
 
   const reset = async () => {
-    const res = await fetch("/api/reset", { method: "POST" });
-    if (!res.ok) {
+    try {
+      await resetDatabase();
+      await queryClient.invalidateQueries();
+      toast.success("Database reset");
+      setResetOpen(false);
+    } catch {
       toast.error("Reset failed");
-      return;
     }
-    toast.success("Database reset");
-    setResetOpen(false);
-    window.location.reload();
   };
 
   return (
@@ -81,7 +94,7 @@ export function ExportImport() {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) importFile(f);
+              if (f) void importFile(f);
             }}
           />
           <Button variant="outline" className="rounded-xl" onClick={() => fileRef.current?.click()}>

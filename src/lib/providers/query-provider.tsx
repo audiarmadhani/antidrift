@@ -5,7 +5,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { get, set, del } from "idb-keyval";
-import { flushOfflineQueue } from "@/lib/sync/offline-queue";
+import { ensureCurrentReview, ensureDbInitialized } from "@/lib/db/local-store";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,26 +30,15 @@ const persister = createAsyncStoragePersister({
   key: "antidrift-query-cache",
 });
 
-async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? "Request failed");
-  }
-  return res.json();
-}
-
-export { apiFetch, queryClient };
+export { queryClient };
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    const handleOnline = async () => {
-      await flushOfflineQueue();
+    void (async () => {
+      await ensureDbInitialized();
+      await ensureCurrentReview();
       queryClient.invalidateQueries();
-    };
-    window.addEventListener("online", handleOnline);
-    fetch("/api/reviews/ensure", { method: "POST" }).catch(() => {});
-    return () => window.removeEventListener("online", handleOnline);
+    })();
   }, []);
 
   return (
